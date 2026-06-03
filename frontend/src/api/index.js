@@ -1,0 +1,86 @@
+/**
+ * API utility — all backend calls go through here.
+ * The Vite dev proxy routes /api → http://localhost:3002
+ */
+
+import { getClerkBearerToken } from '../auth/clerkToken'
+
+const BASE = '/api'
+const ADMIN_TOKEN_KEY = 'cake-admin-token'
+
+async function request(path, options = {}) {
+  const clerkToken = await getClerkBearerToken()
+  const legacyToken = sessionStorage.getItem(ADMIN_TOKEN_KEY)
+  const token = clerkToken || legacyToken
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  }
+  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error(err.error || `Request failed: ${res.status}`)
+  }
+  return res.json()
+}
+
+// ─── Products ─────────────────────────────────────
+export const getProducts = async (category) => {
+  const data = await request(`/products${category && category !== 'all' ? `?category=${category}` : ''}`)
+  return Array.isArray(data) ? data : data.products || []
+}
+
+// ─── Deals ────────────────────────────────────────
+export const getDeals = () => request('/deals')
+
+// ─── Reservations ─────────────────────────────────
+export const createReservation = (data) =>
+  request('/reservations', { method: 'POST', body: JSON.stringify(data) })
+
+export const getReservations = (status) =>
+  request(`/reservations${status ? `?status=${status}` : ''}`)
+
+export const updateReservation = (id, data) =>
+  request(`/reservations/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+// ─── Contact ──────────────────────────────────────
+export const submitContact = (data) =>
+  request('/contact', { method: 'POST', body: JSON.stringify(data) })
+
+export const getContacts = () => request('/contact')
+
+export const markContactRead = (id) =>
+  request(`/contact/${id}/read`, { method: 'PATCH', body: JSON.stringify({}) })
+
+// ─── Admin ────────────────────────────────────────
+export const adminLogin = (password) =>
+  request('/admin/login', { method: 'POST', body: JSON.stringify({ password }) })
+
+export const getAdminStats = () => request('/admin/stats')
+
+export const getBiotrackStatus = () => request('/admin/biotrack-status')
+
+export const getAdminMenu = () => request('/admin/menu')
+
+export const createAdminProduct = (data) =>
+  request('/admin/menu', { method: 'POST', body: JSON.stringify(data) })
+
+export const updateAdminProduct = (id, data) =>
+  request(`/admin/menu/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+export const deleteAdminProduct = (id) =>
+  request(`/admin/menu/${encodeURIComponent(id)}`, { method: 'DELETE' })
+
+export const previewMenuSpreadsheetImport = (csv) =>
+  request('/admin/menu/import/preview', { method: 'POST', body: JSON.stringify({ csv }) })
+
+export const applyMenuSpreadsheetImport = (csv, approvedChanges) =>
+  request('/admin/menu/import/apply', { method: 'POST', body: JSON.stringify({ csv, approvedChanges }) })
+
+// ─── Customer ─────────────────────────────────────
+// Fetches the signed-in customer's profile and reservation history.
+// Passes the Clerk token directly (same mechanism as admin requests).
+export const fetchCustomerSession = () => request('/customer/session')
+
+export { ADMIN_TOKEN_KEY }

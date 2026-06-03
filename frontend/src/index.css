@@ -1,0 +1,213 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { @apply bg-background text-on-background font-body overflow-x-hidden; }
+
+  ::selection { @apply bg-primary text-on-primary; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { @apply bg-background; }
+  ::-webkit-scrollbar-thumb { @apply bg-outline-variant rounded; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-primary; }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+}
+
+@layer utilities {
+  .neon-glow-pink {
+    text-shadow: 0 0 10px rgba(255,124,245,0.5), 0 0 30px rgba(255,124,245,0.2);
+  }
+  .neon-glow-cyan {
+    text-shadow: 0 0 10px rgba(0,238,252,0.5), 0 0 30px rgba(0,238,252,0.2);
+  }
+  .glass-panel {
+    backdrop-filter: blur(20px);
+    background: rgba(14, 14, 16, 0.8);
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-primary text-on-primary font-headline font-bold rounded-lg
+           shadow-neon-pink hover:scale-105 active:scale-95 transition-transform
+           flex items-center gap-2 text-sm tracking-wide;
+  }
+  .btn-outline {
+    @apply px-6 py-3 bg-surface-container-high border border-outline-variant/30 text-on-surface
+           font-headline font-bold rounded-lg hover:border-secondary/50 hover:text-secondary
+           transition-all text-sm;
+  }
+  .card {
+    @apply bg-surface-container-high rounded-xl border border-white/5
+           hover:border-primary/40 transition-all duration-300;
+  }
+  .input-field {
+    @apply w-full bg-surface-container border-none rounded-lg px-4 py-3 text-sm
+           text-on-surface placeholder:text-on-surface-variant/40
+           focus:ring-1 focus:ring-primary font-body;
+  }
+  .label {
+    @apply text-[10px] font-label uppercase tracking-widest text-on-surface-variant block mb-1.5;
+  }
+}
+
+/* ─── Keyframes ─────────────────────────────────── */
+
+@keyframes neonPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,124,245,0.5); }
+  70%  { box-shadow: 0 0 0 16px rgba(255,124,245,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,124,245,0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Neon flicker — subtle pulsing glow on brand elements */
+@keyframes neonFlicker {
+  0%, 95%, 100%  { text-shadow: 0 0 10px rgba(255,124,245,0.55), 0 0 30px rgba(255,124,245,0.2); }
+  96%            { text-shadow: 0 0 4px  rgba(255,124,245,0.2),  0 0 8px  rgba(255,124,245,0.1); }
+  97%            { text-shadow: 0 0 10px rgba(255,124,245,0.55), 0 0 30px rgba(255,124,245,0.2); }
+  98%            { text-shadow: none; }
+  99%            { text-shadow: 0 0 10px rgba(255,124,245,0.55), 0 0 30px rgba(255,124,245,0.2); }
+}
+
+/* Shimmer sweep — for skeleton loaders and neon borders */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Count up nudge — subtle pop when stat enters view */
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.8); }
+  70%  { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Line trace — neon underline draws across */
+@keyframes lineTrace {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* Float — subtle vertical hover for hero image */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* ─── Utility Animation Classes ─────────────────── */
+
+.animate-fade-in-up    { animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in       { animation: fadeIn 0.4s ease both; }
+.animate-slide-right   { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-left    { animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in      { animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pop-in        { animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pulse-dot     { animation: pulse-dot 2s ease-in-out infinite; }
+.animate-float         { animation: float 4s ease-in-out infinite; }
+.animate-neon-flicker  { animation: neonFlicker 8s ease-in-out infinite; }
+.btn-pulse:active      { animation: neonPulse 0.4s ease-out; }
+
+/* Hero sequence — staggered entrance for hero elements */
+.hero-item {
+  opacity: 0;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-item:nth-child(1) { animation-delay: 0.1s; }
+.hero-item:nth-child(2) { animation-delay: 0.25s; }
+.hero-item:nth-child(3) { animation-delay: 0.4s; }
+.hero-item:nth-child(4) { animation-delay: 0.55s; }
+.hero-item:nth-child(5) { animation-delay: 0.7s; }
+
+/* ─── Scroll Reveal ─────────────────────────────── */
+
+/* Base hidden state */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-28px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Visible state (added by IntersectionObserver) */
+.reveal.visible,
+.reveal-left.visible,
+.reveal-scale.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger delay helpers */
+.stagger-1  { transition-delay: 0.05s; }
+.stagger-2  { transition-delay: 0.12s; }
+.stagger-3  { transition-delay: 0.19s; }
+.stagger-4  { transition-delay: 0.26s; }
+.stagger-5  { transition-delay: 0.33s; }
+.stagger-6  { transition-delay: 0.40s; }
+.stagger-7  { transition-delay: 0.47s; }
+.stagger-8  { transition-delay: 0.54s; }
+
+/* ─── Neon shimmer border ───────────────────────── */
+.shimmer-border {
+  background: linear-gradient(
+    90deg,
+    rgba(255,124,245,0.1) 0%,
+    rgba(255,124,245,0.4) 40%,
+    rgba(0,238,252,0.4) 60%,
+    rgba(255,124,245,0.1) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ─── Page transition ───────────────────────────── */
+.page-enter {
+  animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

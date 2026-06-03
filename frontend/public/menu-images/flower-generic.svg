@@ -1,0 +1,22 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" rx="48" fill="#121016"/>
+  <rect x="36" y="36" width="1128" height="1128" rx="36" fill="url(#bg)"/>
+  <circle cx="600" cy="600" r="252" fill="url(#glow)" opacity="0.24"/>
+  <path d="M600 335C646 395 674 465 674 533C674 607 643 673 600 734C557 673 526 607 526 533C526 465 554 395 600 335Z" fill="#B7FF72"/>
+  <path d="M422 470C498 474 565 495 621 533C561 576 495 600 427 603C357 606 291 582 222 534C291 487 354 466 422 470Z" fill="#7BFFB8"/>
+  <path d="M778 470C846 466 909 487 978 534C909 582 843 606 773 603C705 600 639 576 579 533C635 495 702 474 778 470Z" fill="#7BFFB8"/>
+  <path d="M485 774C545 717 618 679 690 661C667 744 628 809 570 857C510 905 438 933 352 944C366 858 409 793 485 774Z" fill="#8DEB63"/>
+  <path d="M715 661C787 679 860 717 920 774C996 793 1039 858 1048 944C962 933 890 905 830 857C772 809 733 744 715 661Z" fill="#8DEB63"/>
+  <circle cx="600" cy="600" r="84" fill="#FFE56A"/>
+  <text x="600" y="1032" fill="#F5EFFF" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" text-anchor="middle">Live Flower</text>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="96" x2="1026" y2="1113" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#291937"/>
+      <stop offset="1" stop-color="#14141A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 600) rotate(90) scale(252)">
+      <stop stop-color="#B7FF72"/>
+      <stop offset="1" stop-color="#B7FF72" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

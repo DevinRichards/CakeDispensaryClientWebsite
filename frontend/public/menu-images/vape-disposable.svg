@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0c1620"/>
+      <stop offset="55%" stop-color="#0f3841"/>
+      <stop offset="100%" stop-color="#091017"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="36%" r="58%">
+      <stop offset="0%" stop-color="#43f3ff" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#43f3ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#34d7df"/>
+      <stop offset="100%" stop-color="#0f7e89"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#glow)"/>
+  <ellipse cx="600" cy="1010" rx="220" ry="54" fill="#000" opacity="0.28"/>
+  <g transform="translate(430 120)">
+    <rect x="98" y="70" width="144" height="720" rx="70" fill="url(#body)"/>
+    <rect x="116" y="126" width="108" height="230" rx="32" fill="#d4fbff" opacity="0.88"/>
+    <rect x="138" y="14" width="64" height="76" rx="20" fill="#d3edf0"/>
+    <rect x="146" y="410" width="48" height="230" rx="20" fill="#0c4b52" opacity="0.55"/>
+    <circle cx="170" cy="716" r="16" fill="#ebffff"/>
+    <text x="170" y="850" fill="#8bf7ff" font-size="34" font-family="Arial, Helvetica, sans-serif" text-anchor="middle" font-weight="700">DISPOSABLE</text>
+  </g>
+</svg>

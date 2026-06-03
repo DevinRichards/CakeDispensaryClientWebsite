@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#0e0e10"/>
+  <!-- Cake layers -->
+  <rect x="14" y="38" width="36" height="10" rx="3" fill="#ff7cf5"/>
+  <rect x="18" y="28" width="28" height="10" rx="3" fill="#cc7aff"/>
+  <!-- Candle -->
+  <rect x="29" y="18" width="6" height="12" rx="2" fill="#00eefc"/>
+  <!-- Flame -->
+  <ellipse cx="32" cy="16" rx="3" ry="4" fill="#ff7cf5"/>
+  <ellipse cx="32" cy="17" rx="1.5" ry="2.5" fill="#fff"/>
+</svg>

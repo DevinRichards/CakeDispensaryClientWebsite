@@ -1,0 +1,23 @@
+<svg width="1200" height="1200" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="1200" rx="48" fill="#141117"/>
+  <rect x="36" y="36" width="1128" height="1128" rx="36" fill="url(#bg)"/>
+  <rect x="278" y="280" width="644" height="644" rx="84" fill="#FFB84D"/>
+  <rect x="322" y="324" width="556" height="556" rx="60" fill="#6B3E20"/>
+  <rect x="360" y="360" width="480" height="480" rx="42" fill="#8A532B"/>
+  <path d="M360 520H840" stroke="#D58A45" stroke-width="28"/>
+  <path d="M360 680H840" stroke="#D58A45" stroke-width="28"/>
+  <path d="M520 360V840" stroke="#D58A45" stroke-width="28"/>
+  <path d="M680 360V840" stroke="#D58A45" stroke-width="28"/>
+  <circle cx="470" cy="460" r="26" fill="#FFD37A"/>
+  <circle cx="725" cy="445" r="22" fill="#FFD37A"/>
+  <circle cx="645" cy="585" r="20" fill="#FFD37A"/>
+  <circle cx="455" cy="730" r="24" fill="#FFD37A"/>
+  <circle cx="755" cy="725" r="18" fill="#FFD37A"/>
+  <text x="600" y="1032" fill="#FFF7EC" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" text-anchor="middle">Live Edible</text>
+  <defs>
+    <linearGradient id="bg" x1="146" y1="98" x2="1065" y2="1122" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3A233F"/>
+      <stop offset="1" stop-color="#18151C"/>
+    </linearGradient>
+  </defs>
+</svg>
