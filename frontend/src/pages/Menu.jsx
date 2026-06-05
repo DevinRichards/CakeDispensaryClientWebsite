@@ -223,7 +223,7 @@ export default function Menu() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
                 {group.products.map((product, i) => (
-                  <FadeIn key={product.id} variant="scale" delay={Math.min(i % 8, 7) * 45}>
+                  <FadeIn key={product.id} variant="scale" delay={Math.min(i % 8, 7) * 45} className="h-full">
                     <div className="h-full">
                       <ProductCard product={product} />
                     </div>
@@ -236,7 +236,7 @@ export default function Menu() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
           {filtered.map((product, i) => (
-            <FadeIn key={product.id} variant="scale" delay={Math.min(i % 8, 7) * 55}>
+            <FadeIn key={product.id} variant="scale" delay={Math.min(i % 8, 7) * 55} className="h-full">
               <div className="h-full">
                 <ProductCard product={product} />
               </div>

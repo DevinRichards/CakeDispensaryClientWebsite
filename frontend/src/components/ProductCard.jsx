@@ -71,7 +71,7 @@ export default function ProductCard({ product }) {
 
   return (
     <>
-      <div className={`group card transition-all duration-300 overflow-hidden flex flex-col ${isOutOfStock ? 'opacity-60' : 'hover:-translate-y-1'}`}>
+      <div className={`group card h-full transition-all duration-300 overflow-hidden flex flex-col ${isOutOfStock ? 'opacity-60' : 'hover:-translate-y-1'}`}>
 
         {/* Image — click opens modal */}
         <button
@@ -128,10 +128,10 @@ export default function ProductCard({ product }) {
 
         {/* Card body */}
         <div className="p-4 sm:p-5 flex flex-col flex-1">
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start gap-2 mb-2 min-h-[4.25rem]">
             <button
               onClick={() => setShowModal(true)}
-              className="font-headline font-bold text-sm sm:text-base leading-tight text-left hover:text-primary transition-colors"
+              className="font-headline font-bold text-sm sm:text-base leading-tight text-left hover:text-primary transition-colors line-clamp-3"
             >
               {product.name}
             </button>
@@ -148,11 +148,9 @@ export default function ProductCard({ product }) {
             {product.terpenes && <span>Terps {product.terpenes}</span>}
           </div>
 
-          {product.description && (
-            <p className="text-on-surface-variant text-xs font-body leading-relaxed mb-4 flex-1 line-clamp-2">
-              {product.description}
-            </p>
-          )}
+          <p className="text-on-surface-variant text-xs font-body leading-relaxed mb-4 min-h-[2.5rem] line-clamp-2">
+            {product.description || ''}
+          </p>
 
           {/* Action button */}
           {isOutOfStock ? (
