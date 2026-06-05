@@ -23,7 +23,7 @@ function isActiveDeal(deal, now) {
 
 router.get('/', (req, res) => {
   try {
-    const deals = JSON.parse(fs.readFileSync(FILE, 'utf8'))
+    const deals = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : []
     const now = new Date()
     const enriched = deals.map((d) => ({
       ...d,
