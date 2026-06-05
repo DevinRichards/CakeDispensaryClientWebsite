@@ -432,6 +432,7 @@ function parseSpreadsheetPricingText(text) {
     const productName = String(record.product || record.product_name || record.item || record.name || '').trim()
     if (productName) currentProduct = productName
     if (!currentProduct) continue
+    const reviewOnly = isSpreadsheetReviewOnly(record, currentProduct)
 
     const medicalPrice = parseCurrency(
       record.medical_price ||
@@ -455,7 +456,16 @@ function parseSpreadsheetPricingText(text) {
       record.price_non_medical
     ) ?? medicalPrice
     const price = recreationalPrice ?? medicalPrice
-    if (price == null) continue
+    const hasCompleteMedRecPrice = medicalPrice != null && recreationalPrice != null
+    if (!hasCompleteMedRecPrice || reviewOnly) {
+      addReviewOnlyPricingEntry(entriesByKey, currentProduct, {
+        reviewOnly,
+        missingPrice: !hasCompleteMedRecPrice,
+        roomData: String(record.roomdata || record.room_data || record.room || record.location || '').trim(),
+        category: String(record.category || '').trim(),
+      })
+      continue
+    }
 
     const quantity = String(record.quantity || record.size || record.weight || '').trim()
     const productGrams = extractProductPackageGrams(currentProduct)
@@ -493,6 +503,38 @@ function parseSpreadsheetPricingText(text) {
   }
 }
 
+function addReviewOnlyPricingEntry(entriesByKey, productName, metadata) {
+  const entry = {
+    productName,
+    quantity: '',
+    grams: null,
+    price: null,
+    medicalPrice: null,
+    recreationalPrice: null,
+    reviewOnly: Boolean(metadata.reviewOnly),
+    missingPrice: Boolean(metadata.missingPrice),
+    roomData: metadata.roomData || '',
+    category: metadata.category || '',
+  }
+
+  for (const key of getPricingKeys(productName)) {
+    if (!entriesByKey.has(key)) entriesByKey.set(key, [])
+    entriesByKey.get(key).push(entry)
+  }
+}
+
+function isSpreadsheetReviewOnly(record, productName) {
+  const fields = [
+    productName,
+    record.category,
+    record.roomdata,
+    record.room_data,
+    record.room,
+    record.location,
+  ]
+  return fields.some((field) => /\bbulk\b/i.test(String(field || '')))
+}
+
 function createEmptyPricingCatalog() {
   return {
     entriesByKey: new Map(),
@@ -502,15 +544,17 @@ function createEmptyPricingCatalog() {
 
 function findSpreadsheetPrice(entries, size) {
   if (!entries || entries.length === 0) return null
+  const publicEntries = entries.filter((entry) => !entry.reviewOnly && !entry.missingPrice && entry.price != null)
+  if (publicEntries.length === 0) return null
 
   const grams = parseGrams(size)
   if (Number.isFinite(grams)) {
-    const exact = entries.find((entry) => entry.grams != null && Math.abs(entry.grams - grams) < 0.001)
+    const exact = publicEntries.find((entry) => entry.grams != null && Math.abs(entry.grams - grams) < 0.001)
     if (exact) return exact
   }
 
-  const oneUnit = entries.find((entry) => entry.grams === 1 || /^1(?:\.0+)?(?:\s*g)?$/i.test(entry.quantity))
-  return oneUnit || entries[0]
+  const oneUnit = publicEntries.find((entry) => entry.grams === 1 || /^1(?:\.0+)?(?:\s*g)?$/i.test(entry.quantity))
+  return oneUnit || publicEntries[0]
 }
 
 function pricesFromSpreadsheetEntry(entry) {
@@ -632,12 +676,14 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
       item.strain,
       name,
     ])
+    const hasReviewOnlySpreadsheetMatch = spreadsheetEntries.some((entry) => entry.reviewOnly || entry.missingPrice)
     const spreadsheetPrice = findSpreadsheetPrice(spreadsheetEntries, size)
     const spreadsheetPrices = pricesFromSpreadsheetEntry(spreadsheetPrice)
     const salesPrice = salesPriceMap.get(inventoryId)?.price ?? null
-    const price = spreadsheetPrices?.price ?? salesPrice ?? null
-    const medicalPrice = spreadsheetPrices?.medicalPrice ?? salesPrice ?? null
-    const recreationalPrice = spreadsheetPrices?.recreationalPrice ?? salesPrice ?? null
+    const allowSalesFallback = !hasReviewOnlySpreadsheetMatch
+    const price = spreadsheetPrices?.price ?? (allowSalesFallback ? salesPrice : null)
+    const medicalPrice = spreadsheetPrices?.medicalPrice ?? (allowSalesFallback ? salesPrice : null)
+    const recreationalPrice = spreadsheetPrices?.recreationalPrice ?? (allowSalesFallback ? salesPrice : null)
     const key = `${category}::${name}`
 
     if (!groups.has(key)) {
@@ -661,6 +707,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
         _medicalPrices: [],
         _recreationalPrices: [],
         _spreadsheetPrices: [],
+        _spreadsheetReviewOnly: false,
       })
     }
 
@@ -674,12 +721,14 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
     if (medicalPrice != null) product._medicalPrices.push(medicalPrice)
     if (recreationalPrice != null) product._recreationalPrices.push(recreationalPrice)
     if (spreadsheetPrice?.price != null) product._spreadsheetPrices.push(spreadsheetPrice.price)
+    if (hasReviewOnlySpreadsheetMatch) product._spreadsheetReviewOnly = true
 
     if (shouldUseVariants(category, size)) {
       const existing = product.variants.find((variant) => variant.size === size)
       if (existing) {
         existing.inStock = existing.inStock || inStock
         existing.stockCount += quantity
+        if (hasReviewOnlySpreadsheetMatch) existing.spreadsheetReviewOnly = true
         if (spreadsheetPrice?.price != null) {
           existing.price = spreadsheetPrice.price
           existing.medicalPrice = spreadsheetPrices.medicalPrice
@@ -701,6 +750,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
           recreationalPrice,
           priceSource: spreadsheetPrice?.price != null ? 'spreadsheet' : price != null ? 'sync_sale' : null,
           hasSpreadsheetPrice: spreadsheetPrice?.price != null,
+          spreadsheetReviewOnly: hasReviewOnlySpreadsheetMatch,
           inStock,
           gramsPerUnit: parseGrams(size),
           biotrackInventoryId: inventoryId,
@@ -712,6 +762,8 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
     } else if (spreadsheetPrice?.price != null) {
       product.priceSource = 'spreadsheet'
       product.hasSpreadsheetPrice = true
+    } else if (hasReviewOnlySpreadsheetMatch) {
+      product.spreadsheetReviewOnly = true
     } else if (price != null) {
       product.priceSource = 'sync_sale'
     }
@@ -729,6 +781,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
         product.recreationalPrice = onlyVariant.recreationalPrice ?? average(product._recreationalPrices) ?? product.price
         product.priceSource = onlyVariant.priceSource || (product._spreadsheetPrices.length ? 'spreadsheet' : product.priceSource || null)
         product.hasSpreadsheetPrice = onlyVariant.hasSpreadsheetPrice || product._spreadsheetPrices.length > 0
+        product.spreadsheetReviewOnly = product._spreadsheetReviewOnly || onlyVariant.spreadsheetReviewOnly
         product.available = onlyVariant.inStock
         product.biotrackInventoryId = onlyVariant.biotrackInventoryId
         product.barcodes = onlyVariant.barcodes
@@ -742,6 +795,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
         product.recreationalPrice = pricedVariant?.recreationalPrice ?? average(product._recreationalPrices) ?? product.price
         product.priceSource = pricedVariant?.priceSource || (product._spreadsheetPrices.length ? 'spreadsheet' : product.priceSource || null)
         product.hasSpreadsheetPrice = product._spreadsheetPrices.length > 0 || product.variants.some((variant) => variant.hasSpreadsheetPrice)
+        product.spreadsheetReviewOnly = product._spreadsheetReviewOnly || product.variants.some((variant) => variant.spreadsheetReviewOnly)
       }
     } else {
       product.price = average(product._prices)
@@ -749,6 +803,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
       product.recreationalPrice = average(product._recreationalPrices) ?? product.price
       product.priceSource = product._spreadsheetPrices.length ? 'spreadsheet' : product.priceSource || null
       product.hasSpreadsheetPrice = product._spreadsheetPrices.length > 0
+      product.spreadsheetReviewOnly = Boolean(product.spreadsheetReviewOnly || product._spreadsheetReviewOnly)
       product.biotrackInventoryId = product.biotrackIds[0] || null
       product.barcodes = [...product.biotrackIds]
     }
@@ -757,6 +812,7 @@ function mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing = c
     delete product._medicalPrices
     delete product._recreationalPrices
     delete product._spreadsheetPrices
+    delete product._spreadsheetReviewOnly
     products.push(product)
   }
 
@@ -1145,9 +1201,8 @@ function getUnmatchedPricingItems(products) {
       name: product.name,
       category: product.category,
       type: product.type,
-      reviewReason: productHasSpreadsheetPrice(product)
-        ? 'Needs staff display/pricing review'
-        : 'Live in BioTrack, not found in pricing spreadsheet',
+      reviewReason: getProductReviewReason(product),
+      spreadsheetReviewOnly: productHasSpreadsheetReviewOnly(product),
       currentPrice: product.price ?? null,
       currentPriceSource: product.priceSource || null,
       variants: Array.isArray(product.variants)
@@ -1163,9 +1218,20 @@ function getUnmatchedPricingItems(products) {
     }))
 }
 
+function getProductReviewReason(product) {
+  if (productHasSpreadsheetReviewOnly(product)) {
+    return 'Found in spreadsheet, but marked bulk or missing complete med/rec pricing'
+  }
+  if (productHasSpreadsheetPrice(product)) {
+    return 'Needs staff display/pricing review'
+  }
+  return 'Live in BioTrack, not found in pricing spreadsheet'
+}
+
 function isPublicMenuProduct(product) {
   if (!product || product.hidden) return false
   if (product.available === false) return false
+  if (productHasSpreadsheetReviewOnly(product)) return false
   if (Array.isArray(product.variants) && product.variants.length > 0) {
     const visibleVariant = product.variants.some((variant) =>
       !variant.hidden &&
@@ -1320,6 +1386,8 @@ async function getAdminMenuItems() {
       override: overrides.products?.[product.id] || null,
       needsPricingReview: !product.custom && product.available !== false && !isPublicMenuProduct(product),
       missingSpreadsheetMatch: !product.custom && !productHasSpreadsheetPrice(product),
+      spreadsheetReviewOnly: productHasSpreadsheetReviewOnly(product),
+      reviewReason: getProductReviewReason(product),
       missingPrice: product.price == null && !(Array.isArray(product.variants) && product.variants.some((variant) => variant.price != null)),
       publicMenuVisible: isPublicMenuProduct(product),
       custom: Boolean(overrides.products?.[product.id]?.custom || product.custom),
@@ -1503,6 +1571,11 @@ function compareProducts(a, b) {
 function productHasSpreadsheetPrice(product) {
   if (product.hasSpreadsheetPrice || product.priceSource === 'spreadsheet') return true
   return Array.isArray(product.variants) && product.variants.some((variant) => variant.hasSpreadsheetPrice || variant.priceSource === 'spreadsheet')
+}
+
+function productHasSpreadsheetReviewOnly(product) {
+  if (product.spreadsheetReviewOnly) return true
+  return Array.isArray(product.variants) && product.variants.some((variant) => variant.spreadsheetReviewOnly)
 }
 
 function getLocalProducts(categoryFilter = null) {

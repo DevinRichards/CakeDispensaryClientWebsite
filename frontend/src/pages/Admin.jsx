@@ -912,7 +912,7 @@ function AdminDashboard({ authMode = 'legacy' }) {
               <div>
                 <h2 className="font-headline font-bold text-lg">BioTrack Items Needing Review</h2>
                 <p className="text-xs text-on-surface-variant font-body mt-1">
-                  Live BioTrack items that are not on the pricing spreadsheet stay hidden here until staff approves med/rec pricing, display details, and whether the item should be treated as bulk/weight-based.
+                  Live BioTrack items stay hidden here if they are missing from the pricing spreadsheet, missing complete med/rec prices, or marked as bulk. Staff must approve pricing, display details, and bulk/weight handling before publishing.
                 </p>
               </div>
               <span className="text-tertiary font-headline font-black text-2xl">{unmatchedPricing.count || 0}</span>
@@ -1209,6 +1209,11 @@ function AdminDashboard({ authMode = 'legacy' }) {
                             {product.needsPricingReview && product.missingSpreadsheetMatch && (
                               <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-tertiary/20 text-tertiary">
                                 Not In Spreadsheet
+                              </span>
+                            )}
+                            {product.needsPricingReview && product.spreadsheetReviewOnly && (
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-tertiary/20 text-tertiary">
+                                Bulk / Price Review
                               </span>
                             )}
                             {product.publicMenuVisible && (
