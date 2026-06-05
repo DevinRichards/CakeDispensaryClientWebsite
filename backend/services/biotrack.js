@@ -8,6 +8,7 @@
 
 const path = require('path')
 const fs = require('fs')
+const { dataPath } = require('../utils/dataPath')
 
 const TRACE_API_URL = normalizeLegacyApiUrl(process.env.BIOTRACK_API_URL || 'https://mcp-tracking.nmhealth.org/serverjson.asp')
 const ORDER_API_BASE = (process.env.BIOTRACK_ORDER_API_URL || 'https://api.nm.trace.biotrackthc.net').replace(/\/+$/, '')
@@ -16,11 +17,11 @@ const FACILITY_KEY = process.env.BIOTRACK_FACILITY_KEY || ''
 const USERNAME = process.env.BIOTRACK_USERNAME || ''
 const PASSWORD = process.env.BIOTRACK_PASSWORD || ''
 const ORDER_LOCATION = process.env.BIOTRACK_ORDER_LOCATION || null
-const MENU_OVERRIDES_FILE = path.join(__dirname, '../data/menu-overrides.json')
-const UNMATCHED_PRICING_FILE = path.join(__dirname, '../data/unmatched-pricing-items.json')
+const MENU_OVERRIDES_FILE = dataPath('menu-overrides.json')
+const UNMATCHED_PRICING_FILE = dataPath('unmatched-pricing-items.json')
 const PRICING_SOURCE_FILE = process.env.BIOTRACK_PRICE_SOURCE_FILE
   ? path.resolve(process.env.BIOTRACK_PRICE_SOURCE_FILE)
-  : path.join(__dirname, '../data/products-pricing-source.csv')
+  : dataPath('products-pricing-source.csv')
 
 const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000
 const SALES_LOOKBACK_TXNS = 2_000_000
@@ -432,8 +433,27 @@ function parseSpreadsheetPricingText(text) {
     if (productName) currentProduct = productName
     if (!currentProduct) continue
 
-    const medicalPrice = parseCurrency(record.medical_price || record.med_price || record.price)
-    const recreationalPrice = parseCurrency(record.recreational_price || record.rec_price || record.price_post_tax || record.price_posttax) ?? medicalPrice
+    const medicalPrice = parseCurrency(
+      record.medical_price ||
+      record.med_price ||
+      record.price_med ||
+      record.medical ||
+      record.med ||
+      record.price
+    )
+    const recreationalPrice = parseCurrency(
+      record.recreational_price ||
+      record.nonmedical_price ||
+      record.non_medical_price ||
+      record.rec_price ||
+      record.price_rec ||
+      record.price_post_tax ||
+      record.price_posttax ||
+      record.price_posttax_rec ||
+      record.price_post_tax_rec ||
+      record.price_nonmedical ||
+      record.price_non_medical
+    ) ?? medicalPrice
     const price = recreationalPrice ?? medicalPrice
     if (price == null) continue
 
@@ -1125,6 +1145,9 @@ function getUnmatchedPricingItems(products) {
       name: product.name,
       category: product.category,
       type: product.type,
+      reviewReason: productHasSpreadsheetPrice(product)
+        ? 'Needs staff display/pricing review'
+        : 'Live in BioTrack, not found in pricing spreadsheet',
       currentPrice: product.price ?? null,
       currentPriceSource: product.priceSource || null,
       variants: Array.isArray(product.variants)
@@ -1296,6 +1319,7 @@ async function getAdminMenuItems() {
       ...product,
       override: overrides.products?.[product.id] || null,
       needsPricingReview: !product.custom && product.available !== false && !isPublicMenuProduct(product),
+      missingSpreadsheetMatch: !product.custom && !productHasSpreadsheetPrice(product),
       missingPrice: product.price == null && !(Array.isArray(product.variants) && product.variants.some((variant) => variant.price != null)),
       publicMenuVisible: isPublicMenuProduct(product),
       custom: Boolean(overrides.products?.[product.id]?.custom || product.custom),
@@ -1483,7 +1507,7 @@ function productHasSpreadsheetPrice(product) {
 
 function getLocalProducts(categoryFilter = null) {
   try {
-    const filePath = path.join(__dirname, '../data/products.json')
+    const filePath = dataPath('products.json')
     const raw = fs.readFileSync(filePath, 'utf8')
     let products = JSON.parse(raw)
     if (categoryFilter && categoryFilter !== 'all') {

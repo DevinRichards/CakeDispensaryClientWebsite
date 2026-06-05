@@ -5,10 +5,10 @@
 const express = require('express')
 const router = express.Router()
 const fs = require('fs')
-const path = require('path')
 const { clerkClient, getAuth } = require('@clerk/express')
+const { dataPath } = require('../utils/dataPath')
 
-const RESERVATIONS_FILE = path.join(__dirname, '../data/reservations.json')
+const RESERVATIONS_FILE = dataPath('reservations.json')
 
 function readReservations() {
   if (!fs.existsSync(RESERVATIONS_FILE)) return []

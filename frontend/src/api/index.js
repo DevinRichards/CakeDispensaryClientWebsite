@@ -1,11 +1,12 @@
 /**
  * API utility — all backend calls go through here.
- * The Vite dev proxy routes /api → http://localhost:3002
+ * Local dev uses Vite's /api proxy. Production can point directly at the
+ * deployed API service with VITE_API_BASE_URL, e.g. https://api.example.com/api.
  */
 
 import { getClerkBearerToken } from '../auth/clerkToken'
 
-const BASE = '/api'
+const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
 const ADMIN_TOKEN_KEY = 'cake-admin-token'
 
 async function request(path, options = {}) {

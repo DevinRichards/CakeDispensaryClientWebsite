@@ -4,11 +4,20 @@ const cors = require('cors')
 const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
 const { isClerkConfigured, maybeClerkMiddleware, requireAuth, requireCustomerAuth } = require('./middleware/auth')
+const { ACTIVE_DATA_DIR } = require('./utils/dataPath')
 
 const app = express()
 const PORT = process.env.PORT || 3002
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
+const FRONTEND_URLS = String(process.env.FRONTEND_URLS || FRONTEND_URL)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+const DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:4173', FRONTEND_URL]
+const ALLOWED_ORIGINS = process.env.NODE_ENV === 'production'
+  ? FRONTEND_URLS
+  : Array.from(new Set(DEV_ORIGINS))
 
 app.use(maybeClerkMiddleware())
 
@@ -34,9 +43,10 @@ app.use(helmet({
 
 // ─── CORS ─────────────────────────────────────────
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? [FRONTEND_URL]
-    : ['http://localhost:5173', 'http://localhost:4173', FRONTEND_URL],
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+    return callback(new Error(`CORS blocked origin: ${origin}`))
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -133,6 +143,7 @@ app.listen(PORT, () => {
   console.log(`   Biotrack:   ${process.env.BIOTRACK_LICENSE_NUMBER && process.env.BIOTRACK_USERNAME && process.env.BIOTRACK_PASSWORD ? '✅ Configured (live NM Trace inventory)' : '⚠️  Not configured (using local fallback catalog)'}`)
   console.log(`   Email:      ${emailConfigured ? '✅ Configured' : '⚠️  Not configured (email disabled)'}`)
   console.log(`   Auth:       ${isClerkConfigured() ? '✅ Clerk configured' : '⚠️  Legacy JWT fallback'}`)
-  console.log(`   CORS:       ${FRONTEND_URL}`)
+  console.log(`   CORS:       ${ALLOWED_ORIGINS.join(', ')}`)
+  console.log(`   Data dir:   ${ACTIVE_DATA_DIR}`)
   console.log()
 })

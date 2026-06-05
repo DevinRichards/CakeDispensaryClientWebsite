@@ -1,9 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const fs = require('fs')
-const path = require('path')
+const { dataPath } = require('../utils/dataPath')
 
-const FILE = path.join(__dirname, '../data/deals.json')
+const FILE = dataPath('deals.json')
 
 function parseDate(value) {
   if (!value) return null

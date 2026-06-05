@@ -1,11 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const fs = require('fs')
-const path = require('path')
 const { v4: uuidv4 } = require('uuid')
 const { sendContactAlert } = require('../services/email')
+const { dataPath } = require('../utils/dataPath')
 
-const FILE = path.join(__dirname, '../data/contacts.json')
+const FILE = dataPath('contacts.json')
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^[0-9+\-().\s]{7,20}$/
 

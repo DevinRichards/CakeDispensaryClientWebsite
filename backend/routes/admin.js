@@ -8,9 +8,9 @@
 const express = require('express')
 const router = express.Router()
 const fs = require('fs')
-const path = require('path')
 const { requireAuth, signAdminToken, checkAdminPassword, isAuthConfigured, isClerkConfigured } = require('../middleware/auth')
 const biotrack = require('../services/biotrack')
+const { dataPath } = require('../utils/dataPath')
 
 // POST /api/admin/login
 router.post('/login', (req, res) => {
@@ -36,8 +36,8 @@ router.get('/stats', requireAuth, (req, res) => {
   try {
     res.set('Cache-Control', 'no-store')
 
-    const resFile = path.join(__dirname, '../data/reservations.json')
-    const conFile = path.join(__dirname, '../data/contacts.json')
+    const resFile = dataPath('reservations.json')
+    const conFile = dataPath('contacts.json')
 
     const reservations = fs.existsSync(resFile)
       ? JSON.parse(fs.readFileSync(resFile, 'utf8'))

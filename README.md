@@ -151,7 +151,22 @@ Current limitation:
 npm run build
 ```
 
-This builds the frontend to `frontend/dist/`. To serve it in production:
+This builds the frontend to `frontend/dist/`.
+
+For Render + GoDaddy launch instructions, use:
+
+```text
+RENDER_GODADDY_LAUNCH.md
+```
+
+The production app is intended to run as:
+
+- Render static site for the frontend.
+- Render Node web service for the backend API.
+- GoDaddy DNS pointing the domain/subdomains to Render.
+- A Render persistent disk mounted to `DATA_DIR` for reservations, contacts, menu overrides, and uploaded pricing data.
+
+If you serve it manually instead:
 
 1. Point your web server (Nginx, Caddy, etc.) to serve `frontend/dist/` as static files.
 2. Configure it to proxy all `/api/*` requests to the backend server.
@@ -163,6 +178,12 @@ NODE_ENV=production node server.js
 ```
 
 Make sure `backend/.env` has `NODE_ENV=production` and `FRONTEND_URL` set to your actual domain (e.g. `https://cakedispensarynm.com`).
+
+If the frontend and backend are on separate hosts, set the frontend build variable:
+
+```env
+VITE_API_BASE_URL=https://api.cakedispensarynm.com/api
+```
 
 ---
 

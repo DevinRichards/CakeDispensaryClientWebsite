@@ -910,15 +910,15 @@ function AdminDashboard({ authMode = 'legacy' }) {
           <div className="card p-5 border border-tertiary/20">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h2 className="font-headline font-bold text-lg">Needs Spreadsheet Price Match</h2>
+                <h2 className="font-headline font-bold text-lg">BioTrack Items Needing Review</h2>
                 <p className="text-xs text-on-surface-variant font-body mt-1">
-                  These live NM Trace items are hidden from the public menu until staff adds an override price or fixes the spreadsheet match.
+                  Live BioTrack items that are not on the pricing spreadsheet stay hidden here until staff approves med/rec pricing, display details, and whether the item should be treated as bulk/weight-based.
                 </p>
               </div>
               <span className="text-tertiary font-headline font-black text-2xl">{unmatchedPricing.count || 0}</span>
             </div>
             {(unmatchedPricing.items || []).length === 0 ? (
-              <p className="text-xs text-on-surface-variant font-body">No unmatched spreadsheet pricing items found.</p>
+              <p className="text-xs text-on-surface-variant font-body">No BioTrack-only review items found.</p>
             ) : (
               <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
                 {(unmatchedPricing.items || []).slice(0, 80).map((item) => (
@@ -928,6 +928,11 @@ function AdminDashboard({ authMode = 'legacy' }) {
                       <p className="text-[10px] text-on-surface-variant/50 font-label uppercase">
                         {item.category} · {item.type || 'Product'} · {item.id}
                       </p>
+                      {item.reviewReason && (
+                        <p className="text-[10px] text-tertiary/80 font-label mt-0.5">
+                          {item.reviewReason}
+                        </p>
+                      )}
                     </div>
                     <span className="text-[10px] font-label text-tertiary shrink-0">
                       {item.variants?.length ? `${item.variants.length} sizes` : item.currentPrice != null ? 'fallback price' : 'no price'}
@@ -1199,6 +1204,11 @@ function AdminDashboard({ authMode = 'legacy' }) {
                             {product.needsPricingReview && (
                               <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-error/20 text-error">
                                 Hidden Until Reviewed
+                              </span>
+                            )}
+                            {product.needsPricingReview && product.missingSpreadsheetMatch && (
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-tertiary/20 text-tertiary">
+                                Not In Spreadsheet
                               </span>
                             )}
                             {product.publicMenuVisible && (
