@@ -437,15 +437,14 @@ function parseSpreadsheetPricingText(text) {
     if (!currentProduct) continue
     const reviewOnly = isSpreadsheetReviewOnly(record, currentProduct)
 
-    const medicalPrice = parseCurrency(
+    const medicalPriceText =
       record.medical_price ||
       record.med_price ||
       record.price_med ||
       record.medical ||
       record.med ||
       record.price
-    )
-    const recreationalPrice = parseCurrency(
+    const recreationalPriceText =
       record.recreational_price ||
       record.nonmedical_price ||
       record.non_medical_price ||
@@ -457,6 +456,32 @@ function parseSpreadsheetPricingText(text) {
       record.price_post_tax_rec ||
       record.price_nonmedical ||
       record.price_non_medical
+    const tieredPrices = parseTieredMedRecPrices(medicalPriceText, recreationalPriceText)
+
+    if (!reviewOnly && tieredPrices.length > 0) {
+      for (const tier of tieredPrices) {
+        const entry = {
+          productName: currentProduct,
+          quantity: `${trimNumber(tier.grams)}g`,
+          grams: tier.grams,
+          price: tier.recreationalPrice,
+          medicalPrice: tier.medicalPrice,
+          recreationalPrice: tier.recreationalPrice,
+        }
+
+        for (const key of getPricingKeys(currentProduct)) {
+          if (!entriesByKey.has(key)) entriesByKey.set(key, [])
+          entriesByKey.get(key).push(entry)
+        }
+      }
+      continue
+    }
+
+    const medicalPrice = parseCurrency(
+      medicalPriceText
+    )
+    const recreationalPrice = parseCurrency(
+      recreationalPriceText
     ) ?? medicalPrice
     const price = recreationalPrice ?? medicalPrice
     const hasCompleteMedRecPrice = medicalPrice != null && recreationalPrice != null
@@ -506,6 +531,37 @@ function parseSpreadsheetPricingText(text) {
   }
 }
 
+function parseTieredMedRecPrices(medicalText, recreationalText) {
+  const medicalTiers = parseTieredPriceText(medicalText)
+  const recreationalTiers = parseTieredPriceText(recreationalText)
+  if (medicalTiers.size === 0 || recreationalTiers.size === 0) return []
+
+  const tiers = []
+  for (const [grams, medicalPrice] of medicalTiers.entries()) {
+    const recreationalPrice = recreationalTiers.get(grams)
+    if (medicalPrice != null && recreationalPrice != null) {
+      tiers.push({ grams: Number(grams), medicalPrice, recreationalPrice })
+    }
+  }
+  return tiers.sort((a, b) => a.grams - b.grams)
+}
+
+function parseTieredPriceText(value) {
+  const text = String(value || '')
+  const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*g\s*(?:-|:)?\s*\$?\s*(\d+(?:\.\d+)?)/gi)]
+  const tiers = new Map()
+
+  for (const match of matches) {
+    const grams = Number(match[1])
+    const price = Number(match[2])
+    if (Number.isFinite(grams) && grams > 0 && Number.isFinite(price) && price >= 0) {
+      tiers.set(trimNumber(grams), roundCurrency(price))
+    }
+  }
+
+  return tiers
+}
+
 function addReviewOnlyPricingEntry(entriesByKey, productName, metadata) {
   const entry = {
     productName,
@@ -530,10 +586,6 @@ function isSpreadsheetReviewOnly(record, productName) {
   const fields = [
     productName,
     record.category,
-    record.roomdata,
-    record.room_data,
-    record.room,
-    record.location,
   ]
   return fields.some((field) => /\bbulk\b/i.test(String(field || '')))
 }
@@ -940,6 +992,8 @@ function extractVariantSize(item) {
 }
 
 function shouldUseVariants(category, size) {
+  const grams = parseGrams(size)
+  if (category === 'flower' && (!Number.isFinite(grams) || grams > 28)) return false
   return !!size && ['flower', 'concentrates', 'prerolls', 'vapes'].includes(category)
 }
 
