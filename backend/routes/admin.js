@@ -7,10 +7,63 @@
 
 const express = require('express')
 const router = express.Router()
+const crypto = require('crypto')
 const fs = require('fs')
+const path = require('path')
 const { requireAuth, signAdminToken, checkAdminPassword, isAuthConfigured, isClerkConfigured } = require('../middleware/auth')
 const biotrack = require('../services/biotrack')
-const { dataPath } = require('../utils/dataPath')
+const { dataPath, ACTIVE_DATA_DIR } = require('../utils/dataPath')
+
+const DEALS_FILE = dataPath('deals.json')
+const UPLOAD_DIR = path.join(ACTIVE_DATA_DIR, 'uploads')
+
+function readJsonFile(file, fallback = []) {
+  if (!fs.existsSync(file)) return fallback
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'))
+  } catch {
+    return fallback
+  }
+}
+
+function writeJsonFile(file, data) {
+  fs.writeFileSync(file, JSON.stringify(data, null, 2))
+}
+
+function cleanText(value, maxLength = 180) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength)
+}
+
+function cleanDate(value) {
+  const text = String(value || '').trim()
+  if (!text) return null
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null
+}
+
+function sanitizeDealInput(input = {}, existing = {}) {
+  const title = cleanText(input.title ?? existing.title, 120)
+  const discount = cleanText(input.discount ?? existing.discount, 60)
+  const description = cleanText(input.description ?? existing.description, 1000)
+  if (!title || !discount || !description) {
+    throw new Error('Deal title, discount, and description are required')
+  }
+
+  return {
+    id: existing.id || `deal-${crypto.randomUUID()}`,
+    title,
+    discount,
+    description,
+    category: cleanText(input.category ?? existing.category ?? 'all', 40) || 'all',
+    schedule: cleanText(input.schedule ?? existing.schedule ?? 'Ongoing', 120) || 'Ongoing',
+    startDate: cleanDate(input.startDate ?? existing.startDate),
+    endDate: cleanDate(input.endDate ?? existing.endDate),
+    icon: cleanText(input.icon ?? existing.icon ?? 'local_offer', 40) || 'local_offer',
+    color: cleanText(input.color ?? existing.color ?? 'primary', 40) || 'primary',
+  }
+}
 
 // POST /api/admin/login
 router.post('/login', (req, res) => {
@@ -75,6 +128,87 @@ router.get('/biotrack-status', requireAuth, async (req, res) => {
     res.json(status)
   } catch (err) {
     res.status(500).json({ connected: false, message: err.message })
+  }
+})
+
+// GET /api/admin/deals (protected)
+router.get('/deals', requireAuth, (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store')
+    res.json(readJsonFile(DEALS_FILE, []))
+  } catch {
+    res.status(500).json({ error: 'Failed to load deals' })
+  }
+})
+
+// POST /api/admin/deals (protected)
+router.post('/deals', requireAuth, (req, res) => {
+  try {
+    const deals = readJsonFile(DEALS_FILE, [])
+    const deal = sanitizeDealInput(req.body || {})
+    deals.push(deal)
+    writeJsonFile(DEALS_FILE, deals)
+    res.status(201).json(deal)
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to create deal' })
+  }
+})
+
+// PATCH /api/admin/deals/:id (protected)
+router.patch('/deals/:id', requireAuth, (req, res) => {
+  try {
+    const deals = readJsonFile(DEALS_FILE, [])
+    const index = deals.findIndex((deal) => deal.id === req.params.id)
+    if (index === -1) return res.status(404).json({ error: 'Deal not found' })
+    deals[index] = sanitizeDealInput(req.body || {}, deals[index])
+    writeJsonFile(DEALS_FILE, deals)
+    res.json(deals[index])
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to update deal' })
+  }
+})
+
+// DELETE /api/admin/deals/:id (protected)
+router.delete('/deals/:id', requireAuth, (req, res) => {
+  try {
+    const deals = readJsonFile(DEALS_FILE, [])
+    const next = deals.filter((deal) => deal.id !== req.params.id)
+    if (next.length === deals.length) return res.status(404).json({ error: 'Deal not found' })
+    writeJsonFile(DEALS_FILE, next)
+    res.json({ success: true, id: req.params.id })
+  } catch {
+    res.status(400).json({ error: 'Failed to delete deal' })
+  }
+})
+
+// POST /api/admin/uploads/image (protected)
+router.post('/uploads/image', requireAuth, (req, res) => {
+  try {
+    const { filename, mimeType, dataBase64 } = req.body || {}
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
+    if (!allowed.has(mimeType)) return res.status(400).json({ error: 'Unsupported image type' })
+    if (!dataBase64) return res.status(400).json({ error: 'Image data is required' })
+
+    const bytes = Buffer.from(String(dataBase64).replace(/^data:[^,]+,/, ''), 'base64')
+    if (!bytes.length || bytes.length > 2 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image must be 2MB or smaller' })
+    }
+
+    const ext =
+      mimeType === 'image/png' ? '.png'
+      : mimeType === 'image/webp' ? '.webp'
+      : '.jpg'
+    const safeStem = cleanText(path.parse(filename || 'product-image').name, 80)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'product-image'
+    const storedName = `${Date.now().toString(36)}-${safeStem}${ext}`
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true })
+    fs.writeFileSync(path.join(UPLOAD_DIR, storedName), bytes)
+    const publicBase = process.env.PUBLIC_API_URL || `${req.protocol}://${req.get('host')}`
+    res.status(201).json({ url: `${publicBase.replace(/\/+$/, '')}/uploads/${storedName}` })
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'Failed to upload image' })
   }
 })
 

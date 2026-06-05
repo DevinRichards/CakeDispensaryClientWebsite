@@ -72,6 +72,20 @@ export const getBiotrackStatus = () => request('/admin/biotrack-status')
 
 export const getAdminMenu = () => request('/admin/menu')
 
+export const getAdminDeals = () => request('/admin/deals')
+
+export const createAdminDeal = (data) =>
+  request('/admin/deals', { method: 'POST', body: JSON.stringify(data) })
+
+export const updateAdminDeal = (id, data) =>
+  request(`/admin/deals/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data) })
+
+export const deleteAdminDeal = (id) =>
+  request(`/admin/deals/${encodeURIComponent(id)}`, { method: 'DELETE' })
+
+export const uploadAdminImage = (data) =>
+  request('/admin/uploads/image', { method: 'POST', body: JSON.stringify(data) })
+
 export const createAdminProduct = (data) =>
   request('/admin/menu', { method: 'POST', body: JSON.stringify(data) })
 

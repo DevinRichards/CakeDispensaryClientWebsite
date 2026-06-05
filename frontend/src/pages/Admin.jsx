@@ -10,11 +10,16 @@ import {
   markContactRead,
   getBiotrackStatus,
   getAdminMenu,
+  getAdminDeals,
+  createAdminDeal,
+  updateAdminDeal,
+  deleteAdminDeal,
   createAdminProduct,
   updateAdminProduct,
   deleteAdminProduct,
   previewMenuSpreadsheetImport,
   applyMenuSpreadsheetImport,
+  uploadAdminImage,
 } from '../api'
 import usePageTitle from '../hooks/usePageTitle'
 import { formatCurrency, getCartPriceTotals, getLinePrices } from '../utils/pricing'
@@ -27,6 +32,15 @@ const STATUS_COLORS = {
 }
 
 const CLERK_ENABLED = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY)
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '')
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
 
 function ClerkAdminGate() {
   const { isLoaded, isSignedIn, user } = useUser()
@@ -120,6 +134,9 @@ function AdminDashboard({ authMode = 'legacy' }) {
   const [reservations, setReservations] = useState([])
   const [contacts, setContacts] = useState([])
   const [menuProducts, setMenuProducts] = useState([])
+  const [deals, setDeals] = useState([])
+  const [dealDrafts, setDealDrafts] = useState({})
+  const [dealSaving, setDealSaving] = useState({})
   const [menuSearch, setMenuSearch] = useState('')
   const [menuCategory, setMenuCategory] = useState('all')
   const [menuVisibility, setMenuVisibility] = useState('all')
@@ -140,6 +157,17 @@ function AdminDashboard({ authMode = 'legacy' }) {
     description: '',
     imageUrl: '',
     available: true,
+  })
+  const [newDeal, setNewDeal] = useState({
+    title: '',
+    discount: '',
+    description: '',
+    category: 'all',
+    schedule: 'Ongoing',
+    startDate: '',
+    endDate: '',
+    icon: 'local_offer',
+    color: 'primary',
   })
   const [resFilter, setResFilter] = useState('today')
   const [resSearch, setResSearch] = useState('')
@@ -229,6 +257,31 @@ function AdminDashboard({ authMode = 'legacy' }) {
     if (token && activeTab === 'menu') loadMenuData()
   }, [token, activeTab, loadMenuData])
 
+  const loadDealsData = useCallback(async () => {
+    if (!token) return
+    try {
+      const data = await getAdminDeals()
+      setDeals(data || [])
+      setDealDrafts(Object.fromEntries((data || []).map((deal) => [deal.id, {
+        title: deal.title || '',
+        discount: deal.discount || '',
+        description: deal.description || '',
+        category: deal.category || 'all',
+        schedule: deal.schedule || 'Ongoing',
+        startDate: deal.startDate || '',
+        endDate: deal.endDate || '',
+        icon: deal.icon || 'local_offer',
+        color: deal.color || 'primary',
+      }])))
+    } catch (err) {
+      alert(err.message || 'Failed to load deals')
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (token && activeTab === 'deals') loadDealsData()
+  }, [token, activeTab, loadDealsData])
+
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoginLoading(true)
@@ -271,6 +324,78 @@ function AdminDashboard({ authMode = 'legacy' }) {
 
   const updateMenuDraft = (id, patch) => {
     setMenuDrafts((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))
+  }
+
+  const updateDealDraft = (id, patch) => {
+    setDealDrafts((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))
+  }
+
+  const submitNewDeal = async (e) => {
+    e.preventDefault()
+    setDealSaving((prev) => ({ ...prev, new: true }))
+    try {
+      await createAdminDeal(newDeal)
+      setNewDeal({
+        title: '',
+        discount: '',
+        description: '',
+        category: 'all',
+        schedule: 'Ongoing',
+        startDate: '',
+        endDate: '',
+        icon: 'local_offer',
+        color: 'primary',
+      })
+      await loadDealsData()
+    } catch (err) {
+      alert(err.message || 'Failed to create deal')
+    } finally {
+      setDealSaving((prev) => ({ ...prev, new: false }))
+    }
+  }
+
+  const saveDeal = async (id) => {
+    setDealSaving((prev) => ({ ...prev, [id]: true }))
+    try {
+      await updateAdminDeal(id, dealDrafts[id] || {})
+      await loadDealsData()
+    } catch (err) {
+      alert(err.message || 'Failed to save deal')
+    } finally {
+      setDealSaving((prev) => ({ ...prev, [id]: false }))
+    }
+  }
+
+  const removeDeal = async (id) => {
+    if (!window.confirm('Delete this deal from the website?')) return
+    setDealSaving((prev) => ({ ...prev, [id]: true }))
+    try {
+      await deleteAdminDeal(id)
+      await loadDealsData()
+    } catch (err) {
+      alert(err.message || 'Failed to delete deal')
+    } finally {
+      setDealSaving((prev) => ({ ...prev, [id]: false }))
+    }
+  }
+
+  const uploadProductImage = async (file, callback) => {
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Images must be 2MB or smaller.')
+      return
+    }
+    try {
+      const dataBase64 = await readFileAsBase64(file)
+      const uploaded = await uploadAdminImage({
+        filename: file.name,
+        mimeType: file.type,
+        dataBase64,
+      })
+      callback(uploaded.url)
+    } catch (err) {
+      alert(err.message || 'Failed to upload image')
+    }
   }
 
   const updateVariantPrice = (id, size, price) => {
@@ -662,6 +787,7 @@ function AdminDashboard({ authMode = 'legacy' }) {
         {[
           { key: 'reservations', label: `Reservations${pendingReservations.length > 0 ? ` (${pendingReservations.length})` : ''}`, icon: 'shopping_basket' },
           { key: 'menu', label: 'Menu', icon: 'restaurant_menu' },
+          { key: 'deals', label: 'Deals', icon: 'local_offer' },
           { key: 'messages', label: `Messages${unreadCount > 0 ? ` (${unreadCount})` : ''}`, icon: 'mail' },
           { key: 'biotrack', label: 'Biotrack Status', icon: 'point_of_sale' },
         ].map((tab) => (
@@ -1073,12 +1199,25 @@ function AdminDashboard({ authMode = 'legacy' }) {
               />
             </div>
             <div className="grid md:grid-cols-2 gap-3 mt-3">
-              <input
-                placeholder="Image URL"
-                value={newProduct.imageUrl}
-                onChange={(e) => setNewProduct((prev) => ({ ...prev, imageUrl: e.target.value }))}
-                className="input-field text-sm"
-              />
+              <div className="space-y-2">
+                <input
+                  placeholder="Image URL"
+                  value={newProduct.imageUrl}
+                  onChange={(e) => setNewProduct((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                  className="input-field text-sm"
+                />
+                <label className="block">
+                  <span className="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant/50 mb-1">
+                    Upload Product Image
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => uploadProductImage(e.target.files?.[0], (url) => setNewProduct((prev) => ({ ...prev, imageUrl: url })))}
+                    className="input-field text-xs file:mr-3 file:rounded-full file:border-0 file:bg-primary/15 file:px-3 file:py-1 file:text-[10px] file:font-label file:uppercase file:tracking-wider file:text-primary"
+                  />
+                </label>
+              </div>
               <input
                 placeholder="Description"
                 value={newProduct.description}
@@ -1243,12 +1382,20 @@ function AdminDashboard({ authMode = 'legacy' }) {
                                 <option key={cat} value={cat}>{cat}</option>
                               ))}
                             </select>
-                            <input
-                              value={draft.imageUrl ?? ''}
-                              onChange={(e) => updateMenuDraft(product.id, { imageUrl: e.target.value })}
-                              placeholder="Image URL"
-                              className="input-field text-xs"
-                            />
+                            <div className="space-y-2">
+                              <input
+                                value={draft.imageUrl ?? ''}
+                                onChange={(e) => updateMenuDraft(product.id, { imageUrl: e.target.value })}
+                                placeholder="Image URL"
+                                className="input-field text-xs"
+                              />
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={(e) => uploadProductImage(e.target.files?.[0], (url) => updateMenuDraft(product.id, { imageUrl: url }))}
+                                className="input-field text-[10px] file:mr-2 file:rounded-full file:border-0 file:bg-primary/15 file:px-2 file:py-1 file:text-[9px] file:font-label file:uppercase file:tracking-wider file:text-primary"
+                              />
+                            </div>
                           </div>
                           <textarea
                             value={draft.description ?? ''}
@@ -1353,6 +1500,105 @@ function AdminDashboard({ authMode = 'legacy' }) {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── DEALS TAB ── */}
+      {activeTab === 'deals' && (
+        <div className="space-y-8">
+          <form onSubmit={submitNewDeal} className="card p-5">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="font-headline font-bold text-lg">Create Deal</h2>
+                <p className="text-xs text-on-surface-variant font-body mt-1">
+                  Add a public promotion to the Deals page. Use dates only for limited-time deals.
+                </p>
+              </div>
+              <button type="submit" disabled={dealSaving.new} className="btn-primary text-xs py-2 px-4 shrink-0">
+                {dealSaving.new ? 'Adding...' : 'Add Deal'}
+              </button>
+            </div>
+            <div className="grid md:grid-cols-4 gap-3">
+              <input required placeholder="Title" value={newDeal.title} onChange={(e) => setNewDeal((prev) => ({ ...prev, title: e.target.value }))} className="input-field text-sm" />
+              <input required placeholder="Discount e.g. 10% OFF" value={newDeal.discount} onChange={(e) => setNewDeal((prev) => ({ ...prev, discount: e.target.value }))} className="input-field text-sm" />
+              <select value={newDeal.category} onChange={(e) => setNewDeal((prev) => ({ ...prev, category: e.target.value }))} className="input-field text-sm">
+                {menuCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+              <input placeholder="Schedule" value={newDeal.schedule} onChange={(e) => setNewDeal((prev) => ({ ...prev, schedule: e.target.value }))} className="input-field text-sm" />
+            </div>
+            <div className="grid md:grid-cols-4 gap-3 mt-3">
+              <input type="date" value={newDeal.startDate} onChange={(e) => setNewDeal((prev) => ({ ...prev, startDate: e.target.value }))} className="input-field text-sm" />
+              <input type="date" value={newDeal.endDate} onChange={(e) => setNewDeal((prev) => ({ ...prev, endDate: e.target.value }))} className="input-field text-sm" />
+              <input placeholder="Icon name" value={newDeal.icon} onChange={(e) => setNewDeal((prev) => ({ ...prev, icon: e.target.value }))} className="input-field text-sm" />
+              <select value={newDeal.color} onChange={(e) => setNewDeal((prev) => ({ ...prev, color: e.target.value }))} className="input-field text-sm">
+                {['primary', 'secondary', 'tertiary'].map((color) => <option key={color} value={color}>{color}</option>)}
+              </select>
+            </div>
+            <textarea
+              required
+              placeholder="Description"
+              value={newDeal.description}
+              onChange={(e) => setNewDeal((prev) => ({ ...prev, description: e.target.value }))}
+              rows={3}
+              className="input-field text-sm mt-3 resize-none"
+            />
+          </form>
+
+          <div className="space-y-3">
+            {deals.length === 0 ? (
+              <div className="text-center py-20">
+                <span className="material-symbols-outlined text-on-surface-variant/20 block mb-3" style={{ fontSize: 56 }}>local_offer</span>
+                <p className="font-headline font-bold">No deals yet</p>
+              </div>
+            ) : deals.map((deal) => {
+              const draft = dealDrafts[deal.id] || {}
+              const saving = dealSaving[deal.id]
+              return (
+                <div key={deal.id} className="card p-5">
+                  <div className="grid lg:grid-cols-[1fr_220px] gap-4">
+                    <div className="space-y-3">
+                      <div className="grid md:grid-cols-4 gap-3">
+                        <input value={draft.title ?? ''} onChange={(e) => updateDealDraft(deal.id, { title: e.target.value })} className="input-field text-sm font-headline font-bold" />
+                        <input value={draft.discount ?? ''} onChange={(e) => updateDealDraft(deal.id, { discount: e.target.value })} className="input-field text-sm" />
+                        <select value={draft.category ?? 'all'} onChange={(e) => updateDealDraft(deal.id, { category: e.target.value })} className="input-field text-sm">
+                          {menuCategories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                        <input value={draft.schedule ?? ''} onChange={(e) => updateDealDraft(deal.id, { schedule: e.target.value })} className="input-field text-sm" />
+                      </div>
+                      <textarea
+                        value={draft.description ?? ''}
+                        onChange={(e) => updateDealDraft(deal.id, { description: e.target.value })}
+                        rows={3}
+                        className="input-field text-sm resize-none"
+                      />
+                      <div className="grid md:grid-cols-4 gap-3">
+                        <input type="date" value={draft.startDate ?? ''} onChange={(e) => updateDealDraft(deal.id, { startDate: e.target.value })} className="input-field text-sm" />
+                        <input type="date" value={draft.endDate ?? ''} onChange={(e) => updateDealDraft(deal.id, { endDate: e.target.value })} className="input-field text-sm" />
+                        <input value={draft.icon ?? ''} onChange={(e) => updateDealDraft(deal.id, { icon: e.target.value })} className="input-field text-sm" />
+                        <select value={draft.color ?? 'primary'} onChange={(e) => updateDealDraft(deal.id, { color: e.target.value })} className="input-field text-sm">
+                          {['primary', 'secondary', 'tertiary'].map((color) => <option key={color} value={color}>{color}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="bg-surface-container rounded-xl p-4">
+                        <p className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/40 mb-1">Preview</p>
+                        <p className="font-headline font-black text-primary">{draft.discount}</p>
+                        <p className="font-headline font-bold text-sm mt-1">{draft.title}</p>
+                        <p className="text-[10px] text-on-surface-variant mt-1">{draft.schedule}</p>
+                      </div>
+                      <button onClick={() => saveDeal(deal.id)} disabled={saving} className="w-full btn-primary text-xs py-2 justify-center">
+                        {saving ? 'Saving...' : 'Save Deal'}
+                      </button>
+                      <button onClick={() => removeDeal(deal.id)} disabled={saving} className="w-full btn-outline text-xs py-2 text-error border-error/30 hover:bg-error/10">
+                        Delete Deal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

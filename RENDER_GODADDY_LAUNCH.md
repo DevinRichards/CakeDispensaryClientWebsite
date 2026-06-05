@@ -32,6 +32,7 @@ Set these on `cake-dispensary-api` in Render.
 ```env
 NODE_ENV=production
 DATA_DIR=/var/data/cake-dispensary
+PUBLIC_API_URL=https://api.cakedispensarynm.com
 
 FRONTEND_URL=https://cakedispensarynm.com
 FRONTEND_URLS=https://cakedispensarynm.com,https://www.cakedispensarynm.com

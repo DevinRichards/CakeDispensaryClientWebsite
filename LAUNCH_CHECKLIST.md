@@ -37,6 +37,7 @@ Use this checklist to move from local build-ready code to a live Render + GoDadd
 
 - [ ] `NODE_ENV=production`
 - [ ] `DATA_DIR=/var/data/cake-dispensary`
+- [ ] `PUBLIC_API_URL=https://api.cakedispensarynm.com`
 - [ ] `FRONTEND_URL=https://cakedispensarynm.com`
 - [ ] `FRONTEND_URLS=https://cakedispensarynm.com,https://www.cakedispensarynm.com`
 - [ ] `CLERK_SECRET_KEY`

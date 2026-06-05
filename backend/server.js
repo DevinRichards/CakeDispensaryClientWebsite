@@ -53,8 +53,8 @@ app.use(cors({
 }))
 
 // ─── Body Parsing ──────────────────────────────────
-app.use(express.json({ limit: '2mb' }))
-app.use(express.urlencoded({ extended: true, limit: '2mb' }))
+app.use(express.json({ limit: '6mb' }))
+app.use(express.urlencoded({ extended: true, limit: '6mb' }))
 
 // ─── Rate Limits ──────────────────────────────────
 // General API: 100 req/15 min per IP
@@ -89,6 +89,9 @@ app.use('/api/', apiLimiter)
 // ─── Public Routes ────────────────────────────────
 app.use('/api/products', require('./routes/products'))
 app.use('/api/deals', require('./routes/deals'))
+app.use('/uploads', express.static(`${ACTIVE_DATA_DIR}/uploads`, {
+  maxAge: process.env.NODE_ENV === 'production' ? '30d' : 0,
+}))
 
 // Reservation POST is public; GET/PATCH are admin-protected
 const reservationRouter = require('./routes/reservations')
