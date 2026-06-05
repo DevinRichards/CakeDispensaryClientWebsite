@@ -17,7 +17,7 @@ Use this checklist to move from local build-ready code to a live Render + GoDadd
 ## GitHub / Source Control
 
 - [x] Review current working tree.
-- [ ] Commit launch prep changes.
+- [x] Commit launch prep changes.
 - [ ] Push repository to GitHub.
 - [ ] Confirm Render can access the GitHub repository.
 
