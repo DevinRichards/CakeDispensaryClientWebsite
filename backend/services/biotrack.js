@@ -2,7 +2,7 @@
  * Biotrack / NM Trace integration service.
  *
  * - Live storefront menu is powered by NM Trace sync_inventory.
- * - Recent sync_sale data is used as a temporary price signal.
+ * - Spreadsheet pricing is the public menu source of truth.
  * - Reservation confirmation is wired to the documented pickup order API.
  */
 
@@ -23,8 +23,9 @@ const PRICING_SOURCE_FILE = process.env.BIOTRACK_PRICE_SOURCE_FILE
   ? path.resolve(process.env.BIOTRACK_PRICE_SOURCE_FILE)
   : dataPath('products-pricing-source.csv')
 
-const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000
+const PRODUCT_CACHE_TTL_MS = Number(process.env.BIOTRACK_PRODUCT_CACHE_TTL_MS || 15 * 60 * 1000)
 const SALES_LOOKBACK_TXNS = 2_000_000
+const ENABLE_SYNC_SALE_PRICES = process.env.BIOTRACK_ENABLE_SYNC_SALE_PRICES === 'true'
 
 const INVENTORY_CATEGORY_MAP = {
   12: 'flower',
@@ -316,7 +317,9 @@ async function getLiveProducts() {
 
   const sessionId = await getTraceSessionId()
   const inventory = await fetchInventory(sessionId)
-  const salesPriceMap = await fetchRecentSalesPriceMap(sessionId, inventory)
+  const salesPriceMap = ENABLE_SYNC_SALE_PRICES
+    ? await fetchRecentSalesPriceMap(sessionId, inventory)
+    : new Map()
   const spreadsheetPricing = loadSpreadsheetPricing()
   const products = mapInventoryToProducts(inventory, salesPriceMap, spreadsheetPricing)
   const enrichedProducts = applyDisplayPricing(applyMenuOverrides(products))

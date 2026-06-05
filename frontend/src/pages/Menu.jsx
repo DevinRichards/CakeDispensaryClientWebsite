@@ -29,11 +29,11 @@ export default function Menu() {
 
   useEffect(() => {
     setLoading(true)
-    getProducts(category || undefined)
+    getProducts()
       .then(setProducts)
       .catch(() => setProducts([]))
       .finally(() => setLoading(false))
-  }, [category])
+  }, [])
 
   const setCategory = (cat) => {
     if (cat) {
@@ -47,6 +47,7 @@ export default function Menu() {
     const q = search.trim().toLowerCase()
 
     const visible = products
+      .filter((product) => !category || product.category === category)
       .filter((product) => {
         if (inStockOnly) {
           const inStock = Array.isArray(product.variants) && product.variants.length > 0

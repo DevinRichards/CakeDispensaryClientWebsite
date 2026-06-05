@@ -8,6 +8,8 @@ import { getClerkBearerToken } from '../auth/clerkToken'
 
 const BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
 const ADMIN_TOKEN_KEY = 'cake-admin-token'
+const MENU_CACHE_TTL_MS = 5 * 60 * 1000
+const menuCache = new Map()
 
 async function request(path, options = {}) {
   const clerkToken = await getClerkBearerToken()
@@ -28,8 +30,14 @@ async function request(path, options = {}) {
 
 // ─── Products ─────────────────────────────────────
 export const getProducts = async (category) => {
+  const key = category && category !== 'all' ? category : 'all'
+  const cached = menuCache.get(key)
+  if (cached && Date.now() - cached.at < MENU_CACHE_TTL_MS) return cached.products
+
   const data = await request(`/products${category && category !== 'all' ? `?category=${category}` : ''}`)
-  return Array.isArray(data) ? data : data.products || []
+  const products = Array.isArray(data) ? data : data.products || []
+  menuCache.set(key, { at: Date.now(), products })
+  return products
 }
 
 // ─── Deals ────────────────────────────────────────
